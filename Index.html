@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulario de Cotización</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .form-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .form-container h1 {
+            font-size: 24px;
+            color: #003366;
+            margin-bottom: 10px;
+        }
+
+        .form-container p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .form-container .input-group {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .form-container input[type="text"],
+        .form-container input[type="email"],
+        .form-container input[type="date"],
+        .form-container select,
+        .form-container textarea {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .form-container .input-group input[type="text"] {
+            width: calc(50% - 10px);
+        }
+
+        .form-container textarea {
+            height: 100px;
+            resize: none;
+        }
+
+        .form-container input[type="checkbox"] {
+            margin-right: 5px;
+        }
+
+        .form-container label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .form-container .captcha-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+
+        .form-container .captcha-container img {
+            height: 30px;
+        }
+
+        .form-container button {
+            background-color: #003366;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+
+        .form-container button:hover {
+            background-color: #0055aa;
+        }
+    </style>
+</head>
+<body>
+
+<div class="form-container">
+    <h1>Solicitar una cotización</h1>
+    <p>Complete sus datos y recibirá la cotización a su correo</p>
+    <form action="https://prod2-10.germanywestcentral.logic.azure.com:443/workflows/6b3079b559af48dcb49ef7a6bfc71673/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=2phClWhZ6XBohtWjVAQvGLZL2icIRaSsqHhiPIETQgc" method="POST">
+        <div class="input-group">
+            <input type="text" name="nombre" placeholder="Nombre" required>
+            <input type="text" name="apellido" placeholder="Apellido" required>
+        </div>
+        <input type="date" name="fecha_nacimiento" placeholder="Fecha de Nacimiento" required>
+        <input type="email" name="email" placeholder="Email" required>
+        <label for="seguro">¿Qué tipo de seguro te interesa?</label>
+        <select name="seguro" id="seguro">
+            <option value="automovil">Automóvil</option>
+            <option value="hogar">Hogar</option>
+            <option value="salud">Salud</option>
+        </select>
+        
+        <!-- Nuevo desplegable para seleccionar la marca del auto -->
+        <label for="marca">Selecciona la marca de tu auto:</label>
+        <select name="marca" id="marca">
+            <option value="">Selecciona una marca</option>
+        </select>
+        
+        <!-- Nuevo desplegable para seleccionar el modelo del auto -->
+        <label for="modelo">Selecciona el modelo de tu auto:</label>
+        <select name="modelo" id="modelo">
+            <option value="">Selecciona un modelo</option>
+        </select>
+
+        <button type="submit">Enviar</button>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const marcaSelect = document.getElementById('marca');
+    const modeloSelect = document.getElementById('modelo');
+
+    let marcas = [];
+    let modelos = {};
+
+    function cargarCSV(url, procesarDatos) {
+        fetch(url)
+            .then(response => response.text())
+            .then(text => {
+                const rows = text.trim().split('\n').map(row => row.split(','));
+                procesarDatos(rows);
+            })
+            .catch(error => console.error('Error al cargar los datos:', error));
+    }
+
+    // Reemplaza las URLs con las ubicaciones de tus archivos CSV en GitHub
+    cargarCSV('https://raw.githubusercontent.com/PLIstaff/PalmaCompanyForm/main/marcas.csv', procesarMarcas);
+    cargarCSV('https://raw.githubusercontent.com/PLIstaff/PalmaCompanyForm/main/modelos.csv', procesarModelos);
+
+    function procesarMarcas(data) {
+        marcas = data.slice(1).map(row => ({
+            id: row[0],
+            nombre: row[1]
+        }));
+        actualizarMarcaSelect();
+    }
+
+    function procesarModelos(data) {
+        data.slice(1).forEach(row => {
+            const marcaId = row[0];
+            const modelo = row[1];
+            if (!modelos[marcaId]) {
+                modelos[marcaId] = [];
+            }
+            modelos[marcaId].push(modelo);
+        });
+    }
+
+    function actualizarMarcaSelect() {
+        marcaSelect.innerHTML = '<option value="">Selecciona una marca</option>';
+        marcas.forEach(marca => {
+            const option = document.createElement('option');
+            option.value = marca.id;
+            option.textContent = marca.nombre;
+            marcaSelect.appendChild(option);
+        });
+    }
+
+    marcaSelect.addEventListener('change', () => {
+        const marcaSeleccionada = marcaSelect.value;
+        const modelosDisponibles = modelos[marcaSeleccionada] || [];
+
+        modeloSelect.innerHTML = '<option value="">Selecciona un modelo</option>';
+        modelosDisponibles.forEach(modelo => {
+            const option = document.createElement('option');
+            option.value = modelo.toLowerCase();
+            option.textContent = modelo;
+            modeloSelect.appendChild(option);
+        });
+    });
+});
+</script>
+
+</body>
+</html>
